@@ -1,0 +1,347 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  BUYER
+  SELLER
+  COURIER
+  ADMIN
+}
+
+enum OrderStatus {
+  DRAFT
+  PLACED
+  SELLER_REVIEW
+  SELLER_CONFIRMED
+  PACKING
+  READY_FOR_PICKUP
+  FINDING_COURIER
+  COURIER_ASSIGNED
+  PICKED_UP
+  ON_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  DISPUTE
+}
+
+enum PaymentMethod {
+  COD
+  MANUAL_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  AVAILABLE
+  ACCEPTED
+  HEADING_TO_SELLER
+  PICKED_UP
+  ON_DELIVERY
+  DELIVERED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  phone         String?
+  password      String
+  role          Role      @default(BUYER)
+  avatar        String?
+  address       String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sellerShop    SellerShop?
+  orders        Order[]       @relation("BuyerOrders")
+  deliveries    Delivery[]    @relation("CourierDeliveries")
+  ratingsGiven  Rating[]      @relation("RatingsGiven")
+  notifications Notification[]
+  disputes      Dispute[]
+
+  @@map("users")
+}
+
+model Market {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  address     String
+  city        String
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sellerShops SellerShop[]
+
+  @@map("markets")
+}
+
+model SellerShop {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  marketId    String
+  name        String
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  phone       String?
+  isActive    Boolean  @default(true)
+  isVerified  Boolean  @default(false)
+  rating      Float    @default(0)
+  totalOrders Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  market   Market    @relation(fields: [marketId], references: [id])
+  products Product[]
+  orders   Order[]
+  ratings  Rating[]  @relation("SellerRatings")
+
+  @@map("seller_shops")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  icon      String?
+  imageUrl  String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  shopId      String
+  categoryId  String
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+  unit        String   @default("kg")
+  price       Float
+  stock       Float    @default(0)
+  minOrder    Float    @default(0.25)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shop          SellerShop           @relation(fields: [shopId], references: [id])
+  category      Category             @relation(fields: [categoryId], references: [id])
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  priceHistory  ProductPriceHistory[]
+
+  @@unique([shopId, slug])
+  @@map("products")
+}
+
+model ProductPriceHistory {
+  id        String   @id @default(cuid())
+  productId String
+  price     Float
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("product_price_history")
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+model Order {
+  id               String        @id @default(cuid())
+  orderNumber      String        @unique
+  buyerId          String
+  shopId           String
+  status           OrderStatus   @default(PLACED)
+  subtotal         Float
+  deliveryFee      Float         @default(15000)
+  platformFee      Float         @default(0)
+  total            Float
+  deliveryAddress  String
+  deliveryNote     String?
+  buyerNote        String?
+  ifStockEmpty     String        @default("CONTACT") // CONTACT | REPLACE | CANCEL_ITEM
+  paymentMethod    PaymentMethod @default(COD)
+  paymentStatus    PaymentStatus @default(PENDING)
+  cancelReason     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  buyer      User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  shop       SellerShop  @relation(fields: [shopId], references: [id])
+  items      OrderItem[]
+  delivery   Delivery?
+  payment    Payment?
+  statusLogs OrderStatusLog[]
+  ratings    Rating[]
+  dispute    Dispute?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  productId     String
+  productName   String
+  productUnit   String
+  quantity      Float
+  priceAtOrder  Float
+  finalPrice    Float?
+  finalQuantity Float?
+  note          String?
+  isCancelled   Boolean @default(false)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model OrderStatusLog {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  createdBy String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_status_logs")
+}
+
+model Delivery {
+  id             String         @id @default(cuid())
+  orderId        String         @unique
+  courierId      String?
+  status         DeliveryStatus @default(AVAILABLE)
+  pickupAddress  String
+  dropAddress    String
+  proofImageUrl  String?
+  acceptedAt     DateTime?
+  pickedUpAt     DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  order   Order @relation(fields: [orderId], references: [id])
+  courier User? @relation("CourierDeliveries", fields: [courierId], references: [id])
+
+  @@map("deliveries")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  amount        Float
+  proofImageUrl String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  type      String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  orderId     String
+  buyerId     String
+  shopId      String?
+  courierId   String?
+  sellerScore Int?
+  courierScore Int?
+  sellerReview String?
+  courierReview String?
+  createdAt   DateTime @default(now())
+
+  order  Order      @relation(fields: [orderId], references: [id])
+  buyer  User       @relation("RatingsGiven", fields: [buyerId], references: [id])
+  shop   SellerShop? @relation("SellerRatings", fields: [shopId], references: [id])
+
+  @@unique([orderId, buyerId])
+  @@map("ratings")
+}
+
+model Dispute {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  userId      String
+  reason      String
+  description String
+  status      String   @default("OPEN") // OPEN | IN_REVIEW | RESOLVED | CLOSED
+  resolution  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("disputes")
+}
