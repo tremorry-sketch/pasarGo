@@ -66,7 +66,11 @@ export default async function MarketsPage() {
             >
               <div className="flex gap-md">
                 <div className="w-24 h-24 rounded-xl bg-surface-container flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  <span className="material-symbols-outlined text-[48px] text-primary opacity-60">storefront</span>
+                  {market.imageUrl ? (
+                    <img src={market.imageUrl} alt={market.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-[48px] text-primary opacity-60">storefront</span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">

@@ -101,16 +101,13 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ s
               className="bg-surface-white rounded-[18px] p-sm card-shadow flex flex-col h-full"
             >
               <div className="relative mb-sm h-32 w-full rounded-[12px] overflow-hidden bg-surface-container">
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[48px] text-primary opacity-40">
-                    {product.category?.name?.toLowerCase().includes('sayur') ? 'eco' :
-                     product.category?.name?.toLowerCase().includes('buah') ? 'nutrition' :
-                     product.category?.name?.toLowerCase().includes('ikan') ? 'set_meal' :
-                     product.category?.name?.toLowerCase().includes('ayam') ? 'egg' :
-                     product.category?.name?.toLowerCase().includes('bumbu') ? 'restaurant' :
-                     'shopping_basket'}
-                  </span>
-                </div>
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[48px] text-primary opacity-40">shopping_basket</span>
+                  </div>
+                )}
                 <div className="absolute top-xs right-xs bg-surface-container-low/90 backdrop-blur-sm px-xs py-base rounded-full text-[10px] font-bold text-primary">
                   Fresh
                 </div>
