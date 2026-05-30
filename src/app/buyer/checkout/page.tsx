@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,7 @@ const PAYMENT_OPTIONS = [
   { value: 'MANUAL_TRANSFER', label: 'Transfer Manual', icon: 'account_balance' },
 ]
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const shopId = searchParams.get('shopId') ?? ''
@@ -227,5 +227,13 @@ export default function CheckoutPage() {
         </Button>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-background"><span className="material-symbols-outlined animate-spin text-primary text-[32px]">refresh</span></div>}>
+      <CheckoutContent />
+    </Suspense>
   )
 }
